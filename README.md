@@ -34,6 +34,12 @@ local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009
 lproj_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4)
 
 ```
+If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `lproj_irf`. 
+```
+tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
+         (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H'
+```
+
 In most Macro settings, this IRF framework gives rise to an identification issue because of the endogeneity of $x$. One approach, referred to "identification through controls" in BB19, is to assume macro variables of interest evolve according to a VAR system, essentially allowing one to back out an exogenous shock to $x$ by conditioning on covariates $\boldsymbol{W}_t$. As they point out, with respect to the application with output and interest rates, this can be thought of as identifying shocks in a Taylor Rule. However, this identification through controls approach has grown less popular over time because of the reliance on stuctural assumptions -- LPs are attactive in the first place in part because the minimal structure imposed has shown to yield much less biased results in finite samples compared to VARs. However, even if we don't feel comfortable ascribing a causaul interpretation to what's being estimated, uncovering correlations is still important and it's quite easy to change the conditioning set to get an idea of how sensitive the results are. 
 
 ## Syntax 
@@ -49,11 +55,23 @@ syntax varlist(min=2) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integ
 * r is the order of the limit polynomial. More specifically, the r+1-th derivitive of the IRF converges to 0 as $\lambda$ grows.
 * Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `lproj_irf`
 
+## Future Development 
+
+Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or feature requests. I will be updating it this summer as I work through a couple projects. Some things I have planned 
+
+* a standalone lproj command that has output similar to `reg`
+* ability to do IV
+* more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
+* error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
  
  ## Installation
 
- Because this is the first time I have tried to create a Stata package (or worked with .ado files in general), for now I am going to hold off on making it available on ssc for now. Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or feature requests. I will be updating it this summer as I work through a couple projects. 
+Because this is the first time I have tried to create a Stata package (or worked with .ado files in general), I am going to wait to make it available on ssc while I keep working on it and get feedback. 
 
  ```
 net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
 ```
+
+
+Thank you to my RA, Claud, for all their help!
+
