@@ -1,23 +1,40 @@
-program lproj_conf, eclass 
+program lproj_irf, eclass 
     version 15.0
-    syntax varlist(min=2) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3)]
+    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3) vmat(string)]
 
     * Parse input
-    local y : word 1 of `varlist'
-    local x : word 2 of `varlist'
-    local contr : subinstr local varlist "`x'" "", word
+    local y : word 1 of `anything'
     local H = `h'
     local h1 = `h1'
-    
-    if (`h1' < 1) {
-    	local contr : subinstr local contr "`y'" "", word
+    // Remove the dependent variable from the variable list
+    local mesh: subinstr local anything "`y'" "", word
+    if (strpos("`mesh'", "(") > 0) {
+    	local pos_open = strpos("`mesh'", "(")
+
+ // Extract the control variables
+        local contr = substr("`mesh'", 1, `pos_open' - 1)
+
+	local contr `contr' `y'
     }
+    else {
+    	local x : word 1 of `mesh'
+	local contr : subinstr local mesh "`x'" "", word
+    }
+
+    local varlist `contr' `x' `y'
+    
+    if (`h1'> 0) {
+    	local contr `contr' `y'
+    }
+    
+    
     
     local r = `r'
     local lambda `lambda'
     local K = `k'
     local Lag = `lag'
     local w `contr'
+    local vmat = "`vmat'"
     
     if (`Lag' > 0) {
     	foreach var of local varlist {
@@ -28,22 +45,64 @@ program lproj_conf, eclass
 	}
     }
     	
-    drop if _n <= `Lag'
+    
+    scalar delt = 0 
+    
+    if (strpos("`mesh'", "(") > 0) {
 
+ // isolate parentheses expression 
+        local paren = substr("`mesh'",`pos_open', .) 
+	local paren: subinstr local paren "(" ""
+        local paren: subinstr local paren ")" ""
+	// isolate endogenous and exogenous variables 
+	local pos_eq = strpos("`paren'", "=")
+	local endg = substr("`paren'",1, `=`pos_eq'-1') 
+	local exg = substr("`paren'",`=`pos_eq'+1', .) 
+	
+	local EV = wordcount("`endg'")
+	local yy : word  1 of `endg'
+	local xx : word 1 of `exg' 
+	quietly reg `yy' `xx' `w'
+	scalar delt = e(rmse)
+	predict `yy'_hat
+	local x `yy'_hat 
+	
+	forvalues i=0/`=`EV' -2' {
+		local yy : word `=`EV' -`i'' of `endg'
+		local xx : word `=`EV' -`i'' of `exg' 
+		quietly reg `yy' `xx' `w'
+		predict `yy'_hat
+		local w `yy'_hat `w'
+	}
+    }
+    else {
+    	local EV  = 1 
+    }
+    
+    local shabang `x' `w' `y'
+    
+    quietly drop if _n <= `Lag'
+     
+    foreach var of local shabang {
+    	quietly drop if missing(`var')
+    }
+    
     local bdeg = `bdeg'
 
     * Create the range of values for h
     tempvar h_range
-    generate `h_range' = `h1' + _n - 1 if _n <= `H'+1-`h1'
+    quietly generate `h_range' = `h1' + _n - 1 if _n <= `H'+1-`h1'
 
     * Generate basis functions
-    bspline, xvar(`h_range') power(`bdeg') knots(`=`h1''(1)`=`H'') gen(bs)
+    quietly bspline, xvar(`h_range') power(`bdeg') knots(`=`h1''(1)`=`H'') gen(bs)
     
     mkmat bs*, matrix(bs)
+    
 
     * Create a matrix from the basis variables
     matrix basis = bs[1..`=`H'+1-`h1'',`=2-`h1''...]
-
+    
+    drop bs*
     * Create covariates matrix if w is specified
     matrix w = J(_N, 1, 1) 
     
@@ -57,13 +116,14 @@ program lproj_conf, eclass
     }
     
     * 1 shock std dev
-    if ("`w'" != "") {
-        regress `x' `w'
+    if (("`w'" != "") & (strpos("`mesh'", "(")==0)) {
+        quietly reg `x' `w'
         scalar delt = e(rmse)
     }
     else {
-        summarize `x', meanonly
-        scalar delt = r(sd)
+        if ("`w'" == "") {
+		scalar delt = r(sd)
+	}
     }
     
     local delta = `=delt'
@@ -81,6 +141,7 @@ program lproj_conf, eclass
     
     mata: y = st_matrix("y")
     mata: x = st_matrix("x")
+    mata: x = x[1...,1]
     mata: w = st_matrix("w")
     mata: basis = st_matrix("basis")
     mata: lambda_vec = tokens("`lambda'")
@@ -89,8 +150,7 @@ program lproj_conf, eclass
     mata: Y = st_matrix("Y") 
     mata: P = st_matrix("P") 
     mata: IDX = st_matrix("IDX")
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`TS',`XS',`delta',lambda_vec)
-
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`TS',`XS',`delta',lambda_vec, "`vmat'")
     
         * Prepare data for graphing
     svmat double results, names(result)
@@ -181,7 +241,8 @@ void function cvtwirl( real scalar T,
 		     real scalar TS,
 		     real scalar XS,
 		     real scalar delta,
-		     string vector lambda_vec)
+		     string vector lambda_vec,
+		     string vmat)
 {
 	min_rss = .
 	min_lambda = .
@@ -232,14 +293,20 @@ void function cvtwirl( real scalar T,
 
         nlag = H
 	lagseq = 0::nlag
-        weights = 1 :- lagseq :/ (nlag+1)
         V = cross(S, S)
-	for (i=1; i <= nlag; i++) {
+	meat = V 
+	fok = 5
+	if (vmat=="nw"){
+		lagseq = 0::nlag
+		weights = 1 :- lagseq :/ (nlag+1)
+		for (i=1; i<=nlag; i++){
 		Gammai = cross(S[(i+1)::rows(S),], S[1::(rows(S)-i),])
-		GplusGprime = Gammai + Gammai'
+		GplusGprime = Gammai + Gammai'	
 		V = V + weights[i+1] * GplusGprime
+		}
+		meat = V
 	}
-	meat = V
+	
         V = bread * meat * bread
 
         V = basis * V[1::XS, 1::XS] * basis'
@@ -262,5 +329,3 @@ void function cvtwirl( real scalar T,
 }
 
 end 
-
-
