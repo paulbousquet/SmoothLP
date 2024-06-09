@@ -31,10 +31,12 @@ local H = 20
 * Vector of possible penalization parameters 
 local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009 .01
 
-lproj_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4)
+* set vmat option to nw for Newey-West, Huber-White by default 
+
+lproj_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 
 ```
-If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `lproj_irf`. 
+If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `lproj_irf`, as shown below. I should also note that these values are not identical the output from the R replication files, but the difference is subtle enough that I'm tenatively assuming it comes down to well-known precision issues with Mata (e.g., 2/3 has an error after the 7th digit) rather than a transcription error, but please parse for yourself! 
 ```
 tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
          (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H'
@@ -42,25 +44,37 @@ tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid
 
 In most Macro settings, this IRF framework gives rise to an identification issue because of the endogeneity of $x$. One approach, referred to "identification through controls" in BB19, is to assume macro variables of interest evolve according to a VAR system, essentially allowing one to back out an exogenous shock to $x$ by conditioning on covariates $\boldsymbol{W}_t$. As they point out, with respect to the application with output and interest rates, this can be thought of as identifying shocks in a Taylor Rule. However, this identification through controls approach has grown less popular over time because of the reliance on stuctural assumptions -- LPs are attactive in the first place in part because the minimal structure imposed has shown to yield much less biased results in finite samples compared to VARs. However, even if we don't feel comfortable ascribing a causaul interpretation to what's being estimated, uncovering correlations is still important and it's quite easy to change the conditioning set to get an idea of how sensitive the results are. 
 
+## IV Extension 
+
+Section 4 of BB19 gives an illustration of the estimator in concert with a LP-IV framework. While no replication files exists for this exercise, conceptually the implementation is straightforward: 2SLS but the first stage contains no regularization procedure. In other words, our `x` becomes the fitted values from the first stage regression. 
+
+To do IV estimation, simply include the endogenous and exogenous variables as you would using `ivregress`. For instance, recall the previous example. If we instrument `ir` with `rr` 
+
+```
+lproj_irf `y' `w' (ir=rr), h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
+```
+The code is deisgned to handle multiple instruments but for now only calculates IRFs with respect to whatever is listed as the first instrument. 
+
 ## Syntax 
 
 ```
-syntax varlist(min=2) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0)]
+syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) vmat(string)]
 ```
-* You can call `lproj` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls.
+* You can call `lproj` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
 * Lambda is a list of numbers considered for the ridge parameter $\lambda$ 
 * K is the number of cross-validation folds
 * H1 is the period the IRF starts
-* r is the order of the limit polynomial. More specifically, the r+1-th derivitive of the IRF converges to 0 as $\lambda$ grows.
+* r sets order of the limit polynomial. More specifically, the $r$-th derivitive of the IRF converges to 0 as $\lambda$ grows 
 * Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `lproj_irf`
+* vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust. 
 
 ## Future Development 
 
 Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or feature requests. I will be updating it this summer as I work through a couple projects. Some things I have planned 
 
 * a standalone lproj command that has output similar to `reg`
-* ability to do IV
+* IV with multiple plots
 * more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
 * error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
  
@@ -72,6 +86,6 @@ Because this is the first time I have tried to create a Stata package (or worked
 net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
 ```
 
-
+***
 Thank you to my RA, Claud, for all their help!
 
