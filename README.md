@@ -53,12 +53,12 @@ To do IV estimation, simply include the endogenous and exogenous variables as yo
 ```
 lproj_irf `y' `w' (ir=rr), h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 ```
-The code is deisgned to handle multiple instruments but for now only calculates IRFs with respect to whatever is listed as the first instrument. 
+The code is deisgned to handle multiple instruments. If you want graphs for all endogenous variables that are instrumented, add the `mult` option  
 
 ## Syntax 
 
 ```
-syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) vmat(string)]
+syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) vmat(string) se(integer 1) CUM MULT NODRAW NOADJ]
 ```
 * You can call `lproj` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
@@ -67,14 +67,24 @@ syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(in
 * H1 is the period the IRF starts
 * r sets order of the limit polynomial. More specifically, the $r$-th derivitive of the IRF converges to 0 as $\lambda$ grows 
 * Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `lproj_irf`
-* vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust. 
+* vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust.
+* se allows you to scale the size of the shock (by default, it's a 1 std shock).
+* Alternativly, you can add the `noadj` option for a pure plot of the coefficients
+* Add `cum` to instead do cumulative IRFs
+* If you have multiple IVs and you want IRFs for all endogenous variables, add `mult`
+* Add `nodraw` for no graphs
+
+To recap and list all of the things that are stored following the command 
+* matrix results: the coeficients that are plotted
+* matrix ic: the bands on the coeficients
+* results and ic are also stored as variables, along with lagged variables if that option is chosen 
+* matrix se: the standard errors
+* scalar min_lambda: the $\lambda$ parameter chosen through cross-validation 
 
 ## Future Development 
 
 Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or feature requests. I will be updating it this summer as I work through a couple projects. Some things I have planned 
 
-* a standalone lproj command that has output similar to `reg`
-* IV with multiple plots
 * more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
 * error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
  
@@ -82,7 +92,10 @@ Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or featur
 
 Because this is the first time I have tried to create a Stata package (or worked with .ado files in general), I am going to wait to make it available on ssc while I keep working on it and get feedback. 
 
+There are two dependencies that must be installed first 
+
  ```
+ssc install moremata bspline
 net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
 ```
 
