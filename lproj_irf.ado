@@ -1,9 +1,11 @@
-program lproj_irf, eclass 
+program lproj_conf, eclass 
     version 15.0
-    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3) vmat(string)]
+    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) MULT CUM NODRAW NOADJ]
 
     * Parse input
     local y : word 1 of `anything'
+    // initialize x 
+    local x 
     local H = `h'
     local h1 = `h1'
     // Remove the dependent variable from the variable list
@@ -14,7 +16,7 @@ program lproj_irf, eclass
  // Extract the control variables
         local contr = substr("`mesh'", 1, `pos_open' - 1)
 
-	local contr `contr' `y'
+	local contr `contr'
     }
     else {
     	local x : word 1 of `mesh'
@@ -58,34 +60,71 @@ program lproj_irf, eclass
 	local pos_eq = strpos("`paren'", "=")
 	local endg = substr("`paren'",1, `=`pos_eq'-1') 
 	local exg = substr("`paren'",`=`pos_eq'+1', .) 
-	
 	local EV = wordcount("`endg'")
-	local yy : word  1 of `endg'
-	local xx : word 1 of `exg' 
-	quietly reg `yy' `xx' `w'
-	scalar delt = e(rmse)
-	predict `yy'_hat
-	local x `yy'_hat 
-	
-	forvalues i=0/`=`EV' -2' {
-		local yy : word `=`EV' -`i'' of `endg'
-		local xx : word `=`EV' -`i'' of `exg' 
+	if ("`mult'" != "") {
+		forvalues i=0/`=`EV' -1' {
+			local yy : word `=`EV' -`i'' of `endg'
+			local xx : word `=`EV' -`i'' of `exg' 
+			quietly reg `yy' `xx' `w'
+			scalar delt = e(rmse)
+			quietly predict `yy'_hat
+			local x `yy'_hat `x'
+		}
+	}
+	else {
+		local yy : word  1 of `endg'
+		local xx : word 1 of `exg' 
 		quietly reg `yy' `xx' `w'
-		predict `yy'_hat
-		local w `yy'_hat `w'
+		scalar delt = e(rmse)
+		quietly predict `yy'_hat
+		local x `yy'_hat 
+		forvalues i=0/`=`EV' -2' {
+			local yy : word `=`EV' -`i'' of `endg'
+			local xx : word `=`EV' -`i'' of `exg' 
+			quietly reg `yy' `xx' `w'
+			quietly predict `yy'_hat
+			local w `yy'_hat `w'
+		}
+		local EV  = 1 
 	}
     }
     else {
     	local EV  = 1 
     }
     
-    local shabang `x' `w' `y'
+    * Additional initializations
+    
+     //we need to drop all places we have missing values since we're doing matrix ops
+    // so first we will create the y matrix to maximize data at longer horizons 
     
     quietly drop if _n <= `Lag'
+    quietly drop if missing(`y')
+    
+    local T = _N
+    
+    if ("`cum'" != "") {
+    	forvalues i=`h1'/`H' {
+		quietly gen temp_`i' = .
+		forvalues j=1/`=`T'-`i'' {
+			quietly sum `y' in `j'/`=`j'+`i''
+			quietly replace temp_`i' = r(sum) in `j'
+		}
+	}
+    }
+    else {
+    	forvalues i=`h1'/`H' {
+		quietly gen temp_`i'= F`i'.`y'
+	}
+    	
+    }
+    
+    local shabang `x' `w' 
      
     foreach var of local shabang {
     	quietly drop if missing(`var')
     }
+    
+    mkmat temp_*, matrix(yy)
     
     local bdeg = `bdeg'
 
@@ -126,41 +165,59 @@ program lproj_irf, eclass
 	}
     }
     
-    local delta = `=delt'
+    if ("`noadj'" != ""){
+    	local delta = 1
+    }
+    else {
+    	local delta = `=delt'*`se'
+    }
+    	
 
-    * Additional initializations
-    local HR = `H' + 1 - `h1'
-    local TS = _N * `HR'
-    local XS = colsof(basis)
-    local NW = colsof(w)
+	* Additional initializations
     local T = _N
+    local HR = `H' + 1 - `h1'
+    local TS = `T' * `HR'
+    local XS = colsof(basis)*`EV'
+    local NW = colsof(w)
+    
     local back = `T'-`h1'
     local L = wordcount("`lambda'")
-    mkmat `y', matrix(y)
     mkmat `x', matrix(x)
     
-    mata: y = st_matrix("y")
+    mata: yy = st_matrix("yy")
     mata: x = st_matrix("x")
-    mata: x = x[1...,1]
     mata: w = st_matrix("w")
     mata: basis = st_matrix("basis")
     mata: lambda_vec = tokens("`lambda'")
-    mata: twirl(`back',y,x,w,basis,`h1',`H',`HR',`NW',`TS',`XS',`r')
+    mata: twirl(`back',yy,x,w,basis,`h1',`H',`HR',`NW',`TS',`XS',`r',`EV')
     mata: X = st_matrix("X")
     mata: Y = st_matrix("Y") 
     mata: P = st_matrix("P") 
     mata: IDX = st_matrix("IDX")
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`TS',`XS',`delta',lambda_vec, "`vmat'")
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`TS',`XS',`delta',`EV',lambda_vec, "`vmat'","`mult'")
     
         * Prepare data for graphing
     svmat double results, names(result)
     svmat double irc, names(irc)
     gen time = _n - 1
-
-
-       
-         tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
-         (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H'
+    
+    if ("`nodraw'" == ""){	
+    	if ("`mult'" == ""){
+		tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
+         (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H', title("IRF of `y' for shock to `x'") xtitle("horizon")
+	}
+	else{
+		forvalues i=1/`EV' {
+			local xx : word `i' of `endg'
+			local shift = (`H'+1)*(`i'-1)
+			tempvar sc_time 
+			quietly gen `sc_time' = time - `shift'
+		tw (rarea irc1 irc2 `sc_time', fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
+         (scatter result1 `sc_time', c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if (`shift'<=time)&(time<=`=`i'*(`H'+1)-1'), title("IRF of `y' for shock to `xx'") name("`xx'") xtitle(horizon)
+		}
+	}
+    }
+        
 
 end
 
@@ -169,7 +226,7 @@ end
 mata: 
 
 void function twirl( real scalar back,
-                     real matrix y,
+                     real matrix yy,
 		     real matrix x,
 		     real matrix w,
 		     real matrix basis,
@@ -179,7 +236,8 @@ void function twirl( real scalar back,
 		     real scalar NW,
 		     real scalar TS,
 		     real scalar XS,
-		     real scalar r)
+		     real scalar r,
+		     real scalar EV)
 {
 
 	width = NW * HR	
@@ -189,19 +247,22 @@ void function twirl( real scalar back,
 	Xc = J(HR,width,0)
 	II = I(HR)
 	
+		
 	for(t=1; t<=back; t++) {
 		idx_beg = (t-1)*HR + 1
 		idx_end = t*HR
     
 		IDX[|idx_beg,1 \ idx_end,1|] = J(HR, 1, t)
 		IDX[|idx_beg,2 \ idx_end,2|] = range(h1, H,1)
-    
    
-		y_range_start = t+h1
-		y_range_end = min((t+H, rows(y)))
-		Y[|idx_beg,1 \ idx_end,1|] = (y[|y_range_start,1 \ y_range_end,1|] \ J(HR-(			y_range_end-y_range_start+1), 1, 0))
+		Y[|idx_beg,1 \ idx_end,1|] = yy[|t,1 \ t,HR|]'
+		
+		stack = basis*x[t,1]
+		for(i=2; i<=EV; i++) {
+			stack = stack, basis*x[t,i]
+		}
     
-		Xb[|idx_beg,1 \ idx_end,XS|] = basis*x[t]
+		Xb[|idx_beg,1 \ idx_end,XS|] = stack
 		for(i=1; i<=NW; i++){
 			cdx_beg = (i-1)*HR + 1
 			cdx_end = i*HR
@@ -241,8 +302,10 @@ void function cvtwirl( real scalar T,
 		     real scalar TS,
 		     real scalar XS,
 		     real scalar delta,
+		     real scalar EV,
 		     string vector lambda_vec,
-		     string vmat)
+		     string vmat,
+		     string mult)
 {
 	min_rss = .
 	min_lambda = .
@@ -271,20 +334,28 @@ void function cvtwirl( real scalar T,
 	}
 	st_numscalar("min_rss", min_rss)
 	st_numscalar("min_lambda", min_lambda)
-	linked = H + 1
+	linked = (H + 1)*EV
         results = J(linked, 1, 0)
         theta = J(cols(X), 1, 0)
-	ml = st_numscalar("min_lambda")
-        lambda_opt = ml
+        lambda_opt = min_lambda 
 
 	XX = cross(X, X)
 	XY = cross(X, Y)
         A = XX + lambda_opt * rows(Y) * P
         b = XY
         theta = invsym(A) * b
-        beta = theta[1..XS, 1]
-	mu = st_matrix("basis") * beta 
-        
+	beta = theta[1..XS, 1]
+	if (mult != ""){
+		mu = basis * beta[1..XS/EV,1] 
+		for (i=2; i<=EV; i++){
+			bigbas = basis * beta[((i-1)*XS/EV+1)..(i*XS/EV),1]
+			mu = mu \ bigbas
+		}
+	}
+	else{
+		mu = basis * beta
+	}
+	
 
         u = Y - X * theta
         S = X :* (u * J(1, cols(X), 1))
@@ -295,7 +366,6 @@ void function cvtwirl( real scalar T,
 	lagseq = 0::nlag
         V = cross(S, S)
 	meat = V 
-	fok = 5
 	if (vmat=="nw"){
 		lagseq = 0::nlag
 		weights = 1 :- lagseq :/ (nlag+1)
@@ -307,24 +377,40 @@ void function cvtwirl( real scalar T,
 		meat = V
 	}
 	
+	
         V = bread * meat * bread
+	
+	
+	if (mult != ""){
+		see = sqrt(diagonal(basis * V[1..XS/EV,1..XS/EV] * basis'))
+		for (i=2; i<=EV; i++){
+			start = (i-1)*XS/EV+1
+			endd = i*XS/EV
+			bigbas = sqrt(diagonal(basis * V[start..endd,start..endd] * basis')) 
+			see = see \ bigbas
+		}
+		se = see
+	}
+	else{
+		V = basis * V[1::XS, 1::XS] * basis'
+		 se = sqrt(diagonal(V))
+	}
+	
 
-        V = basis * V[1::XS, 1::XS] * basis'
-        se = sqrt(diagonal(V))
+       
 
         conf = J(rows(se), 2, .)
         conf[,1] = mu :+ se * invnormal(0.10)
         conf[,2] = mu :+ se * invnormal(0.90)
-
-        irc = J(H+1, 2, .)
-        irc[(h1+1)::(H+1),] = conf * delta
 	
+
+        irc = J(rows(se)+1, 2, .)
+        irc[(h1+1)::linked,] = conf * delta
 	results[|(h1+1),1 \ linked,1 |] = mu * delta
 
         st_matrix("results", results)
         st_matrix("irc", irc)
 	st_matrix("se", se)
-	st_matrix("theta",theta)
         
 }
 
