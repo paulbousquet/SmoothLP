@@ -2,6 +2,20 @@
 
 Some work-in-progress `.ado` files for Smooth Local Projection estimation outlined in [Barnichon and Brownlees (2019)](https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778), BB19 hereafter. This was written based on their [replication files](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/8KQJBJ) (available in R and Matlab). A Julia implementation can be found [here](https://github.com/justinjjlee/SmoothLocalProjections.jl). [Li, Plagborg-Møller, and Wolf (2024)](https://www.sciencedirect.com/science/article/pii/S030440762400068X?via%3Dihub) assess the performance of of variants of VARs and local projections, including this estimator, across a litany of simulations ([GitHub repo](https://github.com/dake-li/lp_var_simul)). 
 
+
+
+<p align="center">
+  <a href="#replication-of-example">Replication</a> |
+  <a href="#iv-extension">IV</a> |
+  <a href="#syntax">Syntax</a> |
+  <a href="#future-development">Development</a> |
+  <a href="#installation">Installation</a>
+</p>
+
+
+
+***
+
 Smooth Local Projections extend penalized regression methods to local projections (LP). The estimator of BB19 comes from minimizing a ridge-type loss function with a penalty matrix constructured from B-spline basis functions. A major motivation is the use of local projections to generate impulse response functions (IRFs). More specifically, the relevant deliverable is a plot of the coeficients on $x_t$ from regressions of $y_{t+h}$ on $(x_t,\boldsymbol{W}_t)$ for $h=h_1,\dots,H$, representing the response path of an outcome varible of interest $y$ given a change in $x$ at $t$. When estimated via a default LP structure, these coefficients can have a lot of variability from one horizon to the next (creating "jagged" plots), as well as large standard errors. BB19 addresses both, most obviously because nonzero values of the ridge parameter $\lambda$ produce more efficient estimates, but the estimated IRFs shrink to a polynomial as $\lambda$ grows because higher order derivitives with this B-spline penalty matrix converge to 0, making response paths even "smoother" than a more straightforward penalized approach. 
 
 ## Replication of Example
