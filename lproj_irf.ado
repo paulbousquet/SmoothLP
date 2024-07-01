@@ -194,7 +194,7 @@ program lproj_irf, eclass
     mata: Y = st_matrix("Y") 
     mata: P = st_matrix("P") 
     mata: IDX = st_matrix("IDX")
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`TS',`XS',`delta',`EV',lambda_vec, "`vmat'","`mult'")
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',lambda_vec, "`vmat'","`mult'")
     
         * Prepare data for graphing
     svmat double results, names(result)
@@ -242,7 +242,7 @@ void function twirl( real scalar back,
 
 	width = NW * HR	
 	IDX = J(TS, 2, 0)
-	Y = J(TS, 1, 0)
+	Y = J(TS, 1, .)
 	Xb = J(TS, XS, 0)
 	Xc = J(HR,width,0)
 	II = I(HR)
@@ -272,9 +272,15 @@ void function twirl( real scalar back,
 		Xc = Xc\Xxc
 	}
 	X = Xb, Xc[|1,1 \ TS,width|] 
+	sel = Y :!= .
+	IDX = select(IDX, sel)
+	Y = select(Y, sel)
+	X = select(X, sel)
+	TS = length(Y)
 	st_matrix("X", X)
 	st_matrix("Y", Y) 
 	st_matrix("IDX", IDX)
+        st_numscalar("TS",TS)
 	XX = cross(X, X)
 	XY = cross(X, Y) 
 	P = J(cols(X), cols(X), 0)
