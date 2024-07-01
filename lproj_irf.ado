@@ -139,7 +139,7 @@ program lproj_irf, eclass
     
 
     * Create a matrix from the basis variables
-    matrix basis = bs[1..`=`H'+1-`h1'',`=2-`h1''...]
+    matrix basis = bs[1..`=`H'+1-`h1'',1...]
     
     drop bs*
     * Create covariates matrix if w is specified
