@@ -1,4 +1,4 @@
-program lproj_irf, eclass 
+program slp_irf, eclass 
     version 15.0
     syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) MULT CUM NODRAW NOADJ]
 
