@@ -93,7 +93,7 @@ To recap and list all of the things that are stored following the command
 * matrix ic: the bands on the coeficients
 * results and ic are also stored as variables, along with lagged variables if that option is chosen 
 * matrix se: the standard errors
-* scalar min_lambda: the $\lambda$ parameter chosen through cross-validation. Note the penalization is scaled by the number of observations across all horizon estimates (will be pretty close to $T * (H+1-h_1)$) in order to keep $\lambda$ relatively small. 
+* scalar min_lambda: the $\lambda$ parameter chosen through cross-validation. Note the penalization is scaled by the number of observations across all horizon estimates (will be pretty close to $T * (H+1-h_1)$ ) in order to keep $\lambda$ relatively small. 
 
 ## Future Development 
 
