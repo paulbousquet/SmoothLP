@@ -16,7 +16,7 @@ An important disclaimer for these programs is that it may be advisable to transf
 
 ***
 
-Smooth Local Projections extend penalized regression methods to local projections (LP). The estimator of BB19 comes from minimizing a ridge-type loss function with a specific penalty matrix motivated by the use of using B-spline basis functions to approximate the coefficient(s) of interest. This approach was conceived to address issues related to a common use of local projections to generate impulse response functions (IRFs). More specifically, the relevant deliverable is a plot of the coeficients on $x_t$ from regressions of $y_{t+h}$ on $(x_t,\boldsymbol{W}_t)$ for $h=h_1,\dots,H$, representing the response path of an outcome varible of interest $y$ given a change in $x$ at $t$. When estimated via a default LP structure, these coefficients can have a lot of variability from one horizon to the next (creating "jagged" plots), as well as large standard errors. BB19 addresses both, most obviously because nonzero values of the ridge parameter $\lambda$ produce more efficient estimates, but the estimated IRFs shrink to a polynomial as $\lambda$ grows because higher order derivitives with this penalty matrix in conjunction with the use of B-splines converge to 0, making response paths even "smoother" than a more straightforward penalized approach. 
+Smooth Local Projections extend penalized regression methods to local projections (LP). The estimator of BB19 comes from minimizing a ridge-type loss function with a specific penalty matrix motivated by the use of using B-spline basis functions to approximate the coefficient(s) of interest. This approach was conceived to address issues related to a common use of local projections to generate impulse response functions (IRFs). More specifically, the relevant deliverable is a plot of the coeficients on $x_t$ from regressions of $y_{t+h}$ on $(x_t,\boldsymbol{W}_t)$ for $h=h_1,\dots,H$, representing the response path of an outcome varible of interest $y$ given a change in $x$ at $t$. When estimated via a default LP structure, these coefficients can have a lot of variability from one horizon to the next (creating "jagged" plots), as well as large standard errors. BB19 addresses both, most obviously because nonzero values of the ridge parameter $\lambda$ produce more efficient estimates, but the estimated IRFs shrink to a polynomial as $\lambda$ grows because higher order derivitives with this penalty matrix in conjunction with the use of B-splines converge to 0, making response paths even "smoother" than a more straightforward penalized approach. Intuitively, smoothness arises across the entire plot because the basis functions are constructed to match the number of periods in the IRF (making adjacent coefficients more similar) and the loss function minimizes RSS across all horizons jointly. 
 
 ## Replication of Example
 
@@ -93,7 +93,7 @@ To recap and list all of the things that are stored following the command
 * matrix ic: the bands on the coeficients
 * results and ic are also stored as variables, along with lagged variables if that option is chosen 
 * matrix se: the standard errors
-* scalar min_lambda: the $\lambda$ parameter chosen through cross-validation 
+* scalar min_lambda: the $\lambda$ parameter chosen through cross-validation. Note the penalization is scaled by the number of observations across all horizon estimates (will be pretty close to $T * (H+1-h_1)$) in order to keep $\lambda$ relatively small. 
 
 ## Future Development 
 
