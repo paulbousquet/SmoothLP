@@ -74,7 +74,7 @@ Program can handle multiple instruments using standard Stata norms (B-splines ar
 ```
 syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) vmat(string) se(integer 1) CUM MULT NODRAW NOADJ]
 ```
-* You can call `lproj` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
+* You can call `slp_irf` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
 * Lambda is a list of numbers considered for the ridge parameter $\lambda$ 
 * K is the number of cross-validation folds
