@@ -47,10 +47,10 @@ local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009
 
 * set vmat option to nw for Newey-West, Huber-White by default 
 
-lproj_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
+slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 
 ```
-If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `lproj_irf`, as shown below. I should also note that these values are not identical the output from the R replication files, but the difference is subtle enough that I'm tenatively assuming it comes down to precision issues with Mata (e.g., 2/3 has an error after the 7th digit) rather than a transcription error, but please parse for yourself! 
+If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. I should also note that these values are not identical the output from the R replication files, but the difference is subtle enough that I'm tenatively assuming it comes down to precision issues with Mata (e.g., 2/3 has an error after the 7th digit) rather than a transcription error, but please parse for yourself! 
 ```
 tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
          (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H'
@@ -65,7 +65,7 @@ Section 4 of BB19 gives an illustration of the estimator in concert with a LP-IV
 To do IV estimation, simply include the endogenous and exogenous variables as you would using `ivregress`. For instance, recall the previous example. If we instrument `ir` with `rr` 
 
 ```
-lproj_irf `y' `w' (ir=rr), h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
+slp_irf `y' `w' (ir=rr), h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 ```
 Program can handle multiple instruments using standard Stata norms (B-splines are also used for these coefficients and the penalty matrix is appended accordingly). A graph will only be produced for the first endogenous variable listed unless the `mult` option is specified.  
 
@@ -80,7 +80,7 @@ syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(in
 * K is the number of cross-validation folds
 * H1 is the period the IRF starts
 * r sets order of the limit polynomial. More specifically, the $r$-th derivitive of the IRF converges to 0 as $\lambda$ grows 
-* Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `lproj_irf`
+* Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `slp_irf`
 * vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust.
 * se allows you to scale the size of the shock (by default, it's a 1 std shock).
 * Alternativly, you can add the `noadj` option for a pure plot of the coefficients
