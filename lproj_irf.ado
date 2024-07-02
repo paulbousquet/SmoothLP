@@ -2,16 +2,20 @@ program lproj_irf, eclass
     version 15.0
     syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) MULT CUM NODRAW NOADJ]
 
+
     * Parse input
+	
     local y : word 1 of `anything'
     // initialize x 
     local x 
+	local trc 
     local H = `h'
     local h1 = `h1'
     // Remove the dependent variable from the variable list
     local mesh: subinstr local anything "`y'" "", word
-    if (strpos("`mesh'", "(") > 0) {
-    	local pos_open = strpos("`mesh'", "(")
+	local ivdum = strpos("`mesh'", "(") 
+    if (`ivdum'> 0) {
+    	local pos_open = `ivdum'
 
  // Extract the control variables
         local contr = substr("`mesh'", 1, `pos_open' - 1)
@@ -49,8 +53,10 @@ program lproj_irf, eclass
     	
     
     scalar delt = 0 
+	
+	
     
-    if (strpos("`mesh'", "(") > 0) {
+    if (`ivdum' > 0) {
 
  // isolate parentheses expression 
         local paren = substr("`mesh'",`pos_open', .) 
@@ -61,36 +67,19 @@ program lproj_irf, eclass
 	local endg = substr("`paren'",1, `=`pos_eq'-1') 
 	local exg = substr("`paren'",`=`pos_eq'+1', .) 
 	local EV = wordcount("`endg'")
-	if ("`mult'" != "") {
-		forvalues i=0/`=`EV' -1' {
-			local yy : word `=`EV' -`i'' of `endg'
-			local xx : word `=`EV' -`i'' of `exg' 
-			quietly reg `yy' `xx' `w'
+		forvalues i=1/`EV' {
+			local yy : word `i' of `endg'
+			quietly reg `yy' `exg' `w'
 			scalar delt = e(rmse)
 			quietly predict `yy'_hat
-			local x `yy'_hat `x'
+			local x `x' `yy'_hat 
+			local trc `trc' `yy'
 		}
-	}
-	else {
-		local yy : word  1 of `endg'
-		local xx : word 1 of `exg' 
-		quietly reg `yy' `xx' `w'
-		scalar delt = e(rmse)
-		quietly predict `yy'_hat
-		local x `yy'_hat 
-		forvalues i=0/`=`EV' -2' {
-			local yy : word `=`EV' -`i'' of `endg'
-			local xx : word `=`EV' -`i'' of `exg' 
-			quietly reg `yy' `xx' `w'
-			quietly predict `yy'_hat
-			local w `yy'_hat `w'
-		}
-		local EV  = 1 
-	}
     }
     else {
     	local EV  = 1 
     }
+		 
     
     * Additional initializations
     
@@ -99,7 +88,6 @@ program lproj_irf, eclass
     
     quietly drop if _n <= `Lag'
     quietly drop if missing(`y')
-    
     local T = _N
     
     if ("`cum'" != "") {
@@ -109,8 +97,8 @@ program lproj_irf, eclass
 			quietly sum `y' in `j'/`=`j'+`i''
 			quietly replace temp_`i' = r(sum) in `j'
 		}
+		}
 	}
-    }
     else {
     	forvalues i=`h1'/`H' {
 		quietly gen temp_`i'= F`i'.`y'
@@ -123,10 +111,11 @@ program lproj_irf, eclass
     foreach var of local shabang {
     	quietly drop if missing(`var')
     }
+	
+	 
     
     mkmat temp_*, matrix(yy)
-    
-    local bdeg = `bdeg'
+	drop temp_*
 
     * Create the range of values for h
     tempvar h_range
@@ -139,8 +128,8 @@ program lproj_irf, eclass
     
 
     * Create a matrix from the basis variables
-    matrix basis = bs[1..`=`H'+1-`h1'',1...]
-    
+    matrix basis = bs[1..`=`H'+1-`h1'',1'...]
+	    
     drop bs*
     * Create covariates matrix if w is specified
     matrix w = J(_N, 1, 1) 
@@ -155,7 +144,7 @@ program lproj_irf, eclass
     }
     
     * 1 shock std dev
-    if (("`w'" != "") & (strpos("`mesh'", "(")==0)) {
+    if (("`w'" != "") & (`ivdum'==0)) {
         quietly reg `x' `w'
         scalar delt = e(rmse)
     }
@@ -171,6 +160,8 @@ program lproj_irf, eclass
     else {
     	local delta = `=delt'*`se'
     }
+	
+	 
     	
 
 	* Additional initializations
@@ -183,6 +174,13 @@ program lproj_irf, eclass
     local back = `T'-`h1'
     local L = wordcount("`lambda'")
     mkmat `x', matrix(x)
+	if (`ivdum' > 0){
+		mkmat `trc', matrix(xz)
+	}
+	else {
+		matrix xz = (1,1)
+	}
+	
     
     mata: yy = st_matrix("yy")
     mata: x = st_matrix("x")
@@ -190,11 +188,16 @@ program lproj_irf, eclass
     mata: basis = st_matrix("basis")
     mata: lambda_vec = tokens("`lambda'")
     mata: twirl(`back',yy,x,w,basis,`h1',`H',`HR',`NW',`TS',`XS',`r',`EV')
-    mata: X = st_matrix("X")
+	mata: X = st_matrix("X")
     mata: Y = st_matrix("Y") 
     mata: P = st_matrix("P") 
     mata: IDX = st_matrix("IDX")
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',lambda_vec, "`vmat'","`mult'")
+	mata: xz = st_matrix("xz")
+	mata: sel = st_matrix("sel")
+	mata: ivtwirl(`ivdum',`back',xz,basis,X,sel,`TS',`XS',`HR',`EV')
+	mata: ZX = st_matrix("ZX")
+	di "DATA PROCESSING COMPLETE"
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',lambda_vec, "`vmat'","`mult'")
     
         * Prepare data for graphing
     svmat double results, names(result)
@@ -240,7 +243,7 @@ void function twirl( real scalar back,
 		     real scalar EV)
 {
 
-	width = NW * HR	
+	width = NW * HR	 
 	IDX = J(TS, 2, 0)
 	Y = J(TS, 1, .)
 	Xb = J(TS, XS, 0)
@@ -271,7 +274,7 @@ void function twirl( real scalar back,
 		Xxc = J(HR,width,0)
 		Xc = Xc\Xxc
 	}
-	X = Xb, Xc[|1,1 \ TS,width|] 
+	X = Xb, Xc[|1,1 \ TS,width|]
 	sel = Y :!= .
 	IDX = select(IDX, sel)
 	Y = select(Y, sel)
@@ -280,9 +283,7 @@ void function twirl( real scalar back,
 	st_matrix("X", X)
 	st_matrix("Y", Y) 
 	st_matrix("IDX", IDX)
-        st_numscalar("TS",TS)
-	XX = cross(X, X)
-	XY = cross(X, Y) 
+	st_numscalar("TS",TS)
 	P = J(cols(X), cols(X), 0)
         D = I(XS)
         for (i=1; i<=r; i++) {
@@ -301,6 +302,7 @@ void function cvtwirl( real scalar T,
 		     real matrix P,
 		     real matrix basis,
 		     real matrix IDX,
+			 real matrix ZX, 
 		     real scalar h1,
 		     real scalar H, 
 		     real scalar L,
@@ -347,6 +349,7 @@ void function cvtwirl( real scalar T,
 
 	XX = cross(X, X)
 	XY = cross(X, Y)
+	
         A = XX + lambda_opt * rows(Y) * P
         b = XY
         theta = invsym(A) * b
@@ -363,7 +366,7 @@ void function cvtwirl( real scalar T,
 	}
 	
 
-        u = Y - X * theta
+        u = Y - ZX * theta
         S = X :* (u * J(1, cols(X), 1))
 
         bread = invsym(XX+ lambda_opt * rows(Y) * P)
@@ -413,11 +416,43 @@ void function cvtwirl( real scalar T,
         irc = J(rows(se)+1, 2, .)
         irc[(h1+1)::linked,] = conf * delta
 	results[|(h1+1),1 \ linked,1 |] = mu * delta
-
+		
         st_matrix("results", results)
         st_matrix("irc", irc)
 	st_matrix("se", se)
         
 }
+
+void function ivtwirl( real scalar ivdum,
+                     real scalar back,
+		     real matrix xz,
+		     real matrix basis,
+			 real matrix X, 
+			 real matrix sel,
+			 real scalar TS, 
+		     real scalar XS,
+			 real scalar HR, 
+		     real scalar EV) 
+{
+	if (ivdum > 0){
+		Xb = J(TS, XS, 0)
+		for(t=1; t<= back; t++){
+			idx_beg = (t-1)*HR + 1
+			idx_end = t*HR
+			stack = basis*xz[t,1]
+			for(i=2; i<=EV; i++){
+				stack = stack, basis*xz[t,i]
+			}
+			Xb[|idx_beg,1 \ idx_end,XS|] = stack
+		}
+		Xb = select(Xb,sel)
+		ZX = Xb, X[. ,(XS+1)..cols(X)]
+		st_matrix("ZX", ZX)
+	}
+	else{
+	   ZX = X	
+	}
+	st_matrix("ZX",ZX)
+} 
 
 end 
