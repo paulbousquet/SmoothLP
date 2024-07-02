@@ -67,7 +67,7 @@ To do IV estimation, simply include the endogenous and exogenous variables as yo
 ```
 lproj_irf `y' `w' (ir=rr), h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 ```
-The code is deisgned to handle multiple instruments. If you want graphs for all endogenous variables that are instrumented, add the `mult` option. This option will also trigger the use of B-spline approximation for these additional coefficients (and append the penalty matrix accordingly).   
+Program can handle multiple instruments using standard Stata norms (B-splines are also used for these coefficients and the penalty matrix is appended accordingly). A graph will only be produced for the first endogenous variable listed unless the `mult` option is specified.  
 
 ## Syntax 
 
@@ -85,7 +85,7 @@ syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(in
 * se allows you to scale the size of the shock (by default, it's a 1 std shock).
 * Alternativly, you can add the `noadj` option for a pure plot of the coefficients
 * Add `cum` to instead do cumulative IRFs
-* If you have multiple IVs and you want IRFs for all endogenous variables, add `mult`
+* If you have multiple IVs and you want graphs for all endogenous variables, add `mult`
 * Add `nodraw` for no graphs
 
 To recap and list all of the things that are stored following the command 
