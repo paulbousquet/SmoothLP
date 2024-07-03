@@ -2,7 +2,7 @@
 
 Some work-in-progress `.ado` files for Smooth Local Projection estimation outlined in [Barnichon and Brownlees (2019)](https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778), BB19 hereafter. This was written based on their [replication files](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/8KQJBJ) (available in R and Matlab). A Julia implementation can be found [here](https://github.com/justinjjlee/SmoothLocalProjections.jl). [Li, Plagborg-Møller, and Wolf (2024)](https://www.sciencedirect.com/science/article/pii/S030440762400068X?via%3Dihub) assess the performance of of variants of VARs and local projections, including this estimator, across a litany of simulations ([GitHub repo](https://github.com/dake-li/lp_var_simul)). 
 
-An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude due to well-known precision issues associated with Stata/Mata. 
+An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude due to well-known precision issues associated with Stata/Mata. This can happen in general (e.g., 7th digit of 1/6) but is particularly an issue when inverting matricies.  
 
 <p align="center">
   <a href="#replication-of-example">Replication</a> |
@@ -50,7 +50,7 @@ local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009
 slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 
 ```
-If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. I should also note that these values are not identical the output from the R replication files, but the difference is subtle enough that I'm tenatively assuming it comes down to precision issues with Mata (e.g., 2/3 has an error after the 7th digit) rather than a transcription error, but please parse for yourself! 
+If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. I should also note that these values are not identical the output from the R replication files, but the difference is subtle enough that I'm tenatively assuming it comes down to aforementioned precision issues with Mata rather than a transcription error, but please parse for yourself! 
 ```
 tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
          (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H'
