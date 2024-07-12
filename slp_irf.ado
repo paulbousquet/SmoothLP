@@ -242,39 +242,33 @@ void function twirl( real scalar back,
 		     real scalar r,
 		     real scalar EV)
 {
-
-	width = NW * HR	 
-	IDX = J(TS, 2, 0)
+	width = NW * HR	
+	IDX = J(TS, 2, .)
 	Y = J(TS, 1, .)
-	Xb = J(TS, XS, 0)
-	Xc = J(HR,width,0)
+	Xb = J(TS, XS, .)
+	Xc = J(TS,width,.)
 	II = I(HR)
+	XSt = XS/EV
 	
 		
 	for(t=1; t<=back; t++) {
-		idx_beg = (t-1)*HR + 1
-		idx_end = t*HR
+		stt = (t-1)*HR + 1
+		edd = t*HR
     
-		IDX[|idx_beg,1 \ idx_end,1|] = J(HR, 1, t)
-		IDX[|idx_beg,2 \ idx_end,2|] = range(h1, H,1)
+		IDX[|stt,1 \ edd,2|] = J(HR, 1, t), range(h1, H,1)
    
-		Y[|idx_beg,1 \ idx_end,1|] = yy[|t,1 \ t,HR|]'
+		Y[|stt,1 \ edd,1|] = yy[|t,1 \ t,HR|]'
 		
-		stack = basis*x[t,1]
-		for(i=2; i<=EV; i++) {
-			stack = stack, basis*x[t,i]
+		for(i=1; i<=EV; i++) {
+			Xb[|stt,idb(i,XSt) \ edd,i*XSt|] = basis*x[t,i]
 		}
-    
-		Xb[|idx_beg,1 \ idx_end,XS|] = stack
+	
 		for(i=1; i<=NW; i++){
-			cdx_beg = (i-1)*HR + 1
-			cdx_end = i*HR
-			Xc[|idx_beg,cdx_beg \ idx_end,cdx_end|] = II * w[t,i]
+			Xc[|stt,idb(i,HR) \ edd,i*HR|] = II * w[t,i]
 		}
-		Xxc = J(HR,width,0)
-		Xc = Xc\Xxc
 	}
-	X = Xb, Xc[|1,1 \ TS,width|]
+
+	X = Xb, Xc
 	sel = Y :!= .
 	IDX = select(IDX, sel)
 	Y = select(Y, sel)
@@ -284,13 +278,19 @@ void function twirl( real scalar back,
 	st_matrix("Y", Y) 
 	st_matrix("IDX", IDX)
 	st_numscalar("TS",TS)
+	st_matrix("sel",sel)
 	P = J(cols(X), cols(X), 0)
-        D = I(XS)
+        D = I(XSt)
         for (i=1; i<=r; i++) {
-		D = D[2..rows(D), .] - D[1..rows(D)-1, .]
+		D = D[2..rows(D), 1..cols(D)] - D[1..rows(D)-1, 1..cols(D)]
 	}
 	DD = D' * D
-        P[1::XS, 1::XS] = DD
+    P[1::XSt, 1::XSt] = DD
+	for(i=2; i<=EV; i++) {
+		stt = XSt*(i-1)+1
+		edd = XSt*i 
+		P[stt::edd,stt::edd] = DD 
+	}
 	st_matrix("P",P)
 } 
 
@@ -328,9 +328,9 @@ void function cvtwirl( real scalar T,
 			X_in = select(X, mask_in)
 			Y_out = select(Y, mask_out)
 			X_out = select(X, mask_out)
-			A = cross(X_in, X_in) + lambda_l * rows(Y_in) * ((K - 1) / K) * P
-			b = cross(X_in, Y_in)
-			beta = invsym(A) * b
+			A = quadcross(X_in, X_in) + lambda_l * rows(Y_in) * ((K - 1) / K) * P
+			b = quadcross(X_in, Y_in)
+			beta = lusolve(A,b)
 			rss_l[i,1] = mean((Y_out - X_out * beta):^2)
 		}
 		avg_rss = mean(rss_l)
@@ -347,12 +347,13 @@ void function cvtwirl( real scalar T,
         theta = J(cols(X), 1, 0)
         lambda_opt = min_lambda 
 
-	XX = cross(X, X)
-	XY = cross(X, Y)
+	XX = quadcross(X, X)
+	XY = quadcross(X, Y)
 	
         A = XX + lambda_opt * rows(Y) * P
+		bread = luinv(A)
         b = XY
-        theta = invsym(A) * b
+        theta = bread * b
 	beta = theta[1..XS, 1]
 	if (mult != ""){
 		mu = basis * beta[1..XS/EV,1] 
@@ -369,17 +370,15 @@ void function cvtwirl( real scalar T,
         u = Y - ZX * theta
         S = X :* (u * J(1, cols(X), 1))
 
-        bread = invsym(XX+ lambda_opt * rows(Y) * P)
-
         nlag = H
 	lagseq = 0::nlag
-        V = cross(S, S)
+        V = quadcross(S, S)
 	meat = V 
 	if (vmat=="nw"){
 		lagseq = 0::nlag
 		weights = 1 :- lagseq :/ (nlag+1)
 		for (i=1; i<=nlag; i++){
-		Gammai = cross(S[(i+1)::rows(S),], S[1::(rows(S)-i),])
+		Gammai = quadcross(S[(i+1)::rows(S),], S[1::(rows(S)-i),])
 		GplusGprime = Gammai + Gammai'	
 		V = V + weights[i+1] * GplusGprime
 		}
@@ -446,13 +445,17 @@ void function ivtwirl( real scalar ivdum,
 			Xb[|idx_beg,1 \ idx_end,XS|] = stack
 		}
 		Xb = select(Xb,sel)
-		ZX = Xb, X[. ,(XS+1)..cols(X)]
+		ZX = Xb, X[1..rows(X),(XS+1)..cols(X)]
 		st_matrix("ZX", ZX)
 	}
 	else{
 	   ZX = X	
 	}
 	st_matrix("ZX",ZX)
-} 
+}
 
+
+real scalar function idb(idx,blk){
+	return ((idx-1)*blk+1)
+}
 end 
