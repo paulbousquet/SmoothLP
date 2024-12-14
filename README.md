@@ -2,8 +2,6 @@
 
 Some work-in-progress `.ado` files for Smooth Local Projection estimation outlined in [Barnichon and Brownlees (2019)](https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778), BB19 hereafter. This was written based on their [replication files](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/8KQJBJ) (available in R and Matlab). A Julia implementation can be found [here](https://github.com/justinjjlee/SmoothLocalProjections.jl) (and [here](https://github.com/junyuan-chen/LocalProjections.jl) as a part of a more comprehesive suite). [Li, Plagborg-Møller, and Wolf (2024)](https://www.sciencedirect.com/science/article/pii/S030440762400068X?via%3Dihub) assess the performance of variants of VARs and local projections, including this estimator, across a litany of simulations ([GitHub repo](https://github.com/dake-li/lp_var_simul)). 
 
-An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude due to well-known precision issues associated with Stata/Mata. This can happen in general (e.g., 7th digit of 1/6) but is particularly an issue when inverting matricies.  
-
 <p align="center">
   <a href="#replication-of-example">Replication</a> |
   <a href="#iv-extension">IV</a> |
@@ -101,6 +99,8 @@ Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or featur
 
 * more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
 * error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
+
+An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude due to well-known precision issues associated with Stata/Mata. This can happen in general (e.g., 7th digit of 1/6) but is particularly an issue when inverting matricies.  
  
  ## Installation
 
