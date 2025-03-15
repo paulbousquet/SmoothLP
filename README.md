@@ -95,7 +95,7 @@ To recap and list all of the things that are stored following the command
 
 ## Future Development 
 
-Please [email me](mailto:ptb8zf@virginia.edu) if you have any comments or feature requests. I will be updating it as I work through a couple projects. Some things I have planned 
+Please [email me](mailto:pbousquet@virginia.edu) if you have any comments or feature requests. I will be updating it as I work through a couple projects. Some things I have planned 
 
 * more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
 * error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
