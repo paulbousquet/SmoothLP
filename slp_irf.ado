@@ -1,6 +1,6 @@
 program slp_irf, eclass 
     version 15.0
-    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) MULT CUM NODRAW NOADJ]
+    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) ztail(integer .1) MULT CUM NODRAW NOADJ]
 
 
     * Parse input
@@ -11,6 +11,8 @@ program slp_irf, eclass
 	local trc 
     local H = `h'
     local h1 = `h1'
+	local nlag = `h'
+	local ztail = `ztail'
     // Remove the dependent variable from the variable list
     local mesh: subinstr local anything "`y'" "", word
 	local ivdum = strpos("`mesh'", "(") 
@@ -32,6 +34,12 @@ program slp_irf, eclass
     if (`h1'> 0) {
     	local contr `contr' `y'
     }
+	
+	if (`nwlag'>0){
+		local nlag = `nwlag'
+		
+	}
+	
     
     
     
@@ -197,7 +205,7 @@ program slp_irf, eclass
 	mata: ivtwirl(`ivdum',`back',xz,basis,X,sel,`TS',`XS',`HR',`EV')
 	mata: ZX = st_matrix("ZX")
 	di "DATA PROCESSING COMPLETE"
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',lambda_vec, "`vmat'","`mult'")
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',`nlag',`ztail',lambda_vec, "`vmat'","`mult'")
     
         * Prepare data for graphing
     svmat double results, names(result)
@@ -311,6 +319,8 @@ void function cvtwirl( real scalar T,
 		     real scalar XS,
 		     real scalar delta,
 		     real scalar EV,
+			 real scalar nlag,
+			 real scalar ztail,
 		     string vector lambda_vec,
 		     string vmat,
 		     string mult)
@@ -370,7 +380,6 @@ void function cvtwirl( real scalar T,
         u = Y - ZX * theta
         S = X :* (u * J(1, cols(X), 1))
 
-        nlag = H
 	lagseq = 0::nlag
         V = quadcross(S, S)
 	meat = V 
@@ -408,8 +417,8 @@ void function cvtwirl( real scalar T,
        
 
         conf = J(rows(se), 2, .)
-        conf[,1] = mu :+ se * invnormal(0.10)
-        conf[,2] = mu :+ se * invnormal(0.90)
+        conf[,1] = mu :+ se * invnormal(ztail)
+        conf[,2] = mu :+ se * invnormal(1-ztail)
 	
 
         irc = J(rows(se)+1, 2, .)
