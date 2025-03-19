@@ -1,6 +1,6 @@
 program slp_irf, eclass 
     version 15.0
-    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) MULT CUM NODRAW NOADJ]
+    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) ztail(real .05) MULT CUM NODRAW NOADJ]
 
 
     * Parse input
@@ -12,7 +12,11 @@ program slp_irf, eclass
     local H = `h'
     local h1 = `h1'
 	local nlag = `h'
-	local ztail = .05
+	if `ztail' <= 0 | `ztail' >= 1 {
+    di as error "ztail must be between 0 and 1"
+    exit 198
+	}
+
     // Remove the dependent variable from the variable list
     local mesh: subinstr local anything "`y'" "", word
 	local ivdum = strpos("`mesh'", "(") 
