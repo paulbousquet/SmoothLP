@@ -39,13 +39,15 @@ local w pi
 local h1 = 1
 * horizon of IRF 
 local H = 20
+* In the original R code, 80% bands are used. Default is 90% 
+local ztail = .1
 
 * Vector of possible penalization parameters 
 local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009 .01
 
 * set vmat option to nw for Newey-West, Huber-White by default 
 
-slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
+slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") ztail(`ztail')
 
 ```
 If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. 
@@ -70,7 +72,7 @@ Program can handle multiple instruments using standard Stata norms (B-splines ar
 ## Syntax 
 
 ```
-syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0)] [R(integer 2)] [Lag(integer 0) vmat(string) se(integer 1) CUM MULT NODRAW NOADJ]
+syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) ztail(real .05) MULT CUM NODRAW NOADJ]
 ```
 * You can call `slp_irf` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
@@ -80,7 +82,9 @@ syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(in
 * r sets order of the limit polynomial. More specifically, the $r$-th derivitive of the IRF converges to 0 as $\lambda$ grows 
 * Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `slp_irf`
 * vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust.
+  * You can specify Newey-West with `p` lags using `nwlag(p)`. Default is `H` as in the original R code.  
 * se allows you to scale the size of the shock (by default, it's a 1 std shock).
+* ztail allows for the confidence bands to be adjusted. Default is .05, which corresponds to 90% confidence intervals. 
 * Alternativly, you can add the `noadj` option for a pure plot of the coefficients
 * Add `cum` to instead do cumulative IRFs
 * If you have multiple IVs and you want graphs for all endogenous variables, add `mult`
