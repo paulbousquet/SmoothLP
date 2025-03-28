@@ -18,7 +18,7 @@ Smooth Local Projections extend penalized regression methods to local projection
 
 ## Replication of Example
 
-Section 3 of the paper shows an application of estimating the impulse response of output to interest rates. The codes below reproduce the IRF with 90% confidence bands, the primary graph from the `demo` code in their replication files. 
+Section 3 of the paper shows an application of estimating the impulse response of output to interest rates. The codes below reproduce the IRF, the primary graph from the `demo` code in their replication files. 
 
 ```
 clear all
