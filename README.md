@@ -1,6 +1,10 @@
 # SmoothLP
 
-Some work-in-progress `.ado` files for Smooth Local Projection estimation outlined in [Barnichon and Brownlees (2019)](https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778), BB19 hereafter. This was written based on their [replication files](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/8KQJBJ) (available in R and Matlab). A Julia implementation can be found [here](https://github.com/justinjjlee/SmoothLocalProjections.jl) (and [here](https://github.com/junyuan-chen/LocalProjections.jl) as a part of a more comprehesive suite). [Li, Plagborg-Møller, and Wolf (2024)](https://www.sciencedirect.com/science/article/pii/S030440762400068X?via%3Dihub) assess the performance of variants of VARs and local projections, including this estimator, across a litany of DGPs ([GitHub repo](https://github.com/dake-li/lp_var_simul)). 
+Some work-in-progress `.ado` files for Smooth Local Projection estimation outlined in [Barnichon and Brownlees (2019)](https://www.mitpressjournals.org/doi/abs/10.1162/rest_a_00778), BB19 hereafter. This was written based on their [replication files](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/8KQJBJ) (available in R and Matlab). 
+
+* [Li, Plagborg-Møller, and Wolf (2024)](https://www.sciencedirect.com/science/article/pii/S030440762400068X?via%3Dihub) assess the performance of variants of VARs and local projections, including this estimator, across a litany of DGPs ([GitHub repo](https://github.com/dake-li/lp_var_simul))
+* A Julia implementation can be found [here](https://github.com/justinjjlee/SmoothLocalProjections.jl) (and [here](https://github.com/junyuan-chen/LocalProjections.jl) as a part of a more comprehesive suite)
+* See also an [R package](https://github.com/jackson-mejia/splp/tree/main) for Smooth LPs in a panel data setting 
 
 <p align="center">
   <a href="#replication-of-example">Replication</a> |
