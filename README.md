@@ -45,16 +45,16 @@ local h1 = 1
 local H = 20
 * In the original R code, 80% bands are used. Default is 90% 
 local ztail = .1
+* the example uses a "naive" starndard error. Inference not well defined in light of cross-validation. 
+* BB19 give (heuristic) reccomendation of calculating standard errors with a smaller (10%) penalty, which is the default
+local naive = 1 
 
 * Vector of possible penalization parameters 
 local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009 .01
 
 * set vmat option to nw for Newey-West, Huber-White by default
 
-* the example uses a "naive" starndard error. Inference not well defined in light of cross-validation. 
-* BB19 give reccomendation of calculating standard errors with a smaller (10%) penalty, which is the default
-
-slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") adjstd(1) ztail(`ztail')
+slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") adjstd(`naive') ztail(`ztail')
 
 ```
 If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. 
