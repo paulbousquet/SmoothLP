@@ -1,22 +1,57 @@
 program slp_irf, eclass 
     version 15.0
-    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) ztail(real .05) MULT CUM NODRAW NOADJ]
+    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
 
+    // Check if data is time series
+    capture tsset
+    if (_rc != 0 & `lag' > 0) {
+        di as error "data must be tsset with lag option"
+        exit 459
+    }
 
-    * Parse input
-	
+    // Input validation
+    if `h' <= 0 {
+        di as error "h() must be a positive integer"
+        exit 198
+    }
+    if `h1' < 0 {
+        di as error "h1() must be non-negative"
+        exit 198
+    }
+    if `h1' > `h' {
+        di as error "h1() cannot be greater than h()"
+        exit 198
+    }
+    if `ztail' <= 0 | `ztail' >= 1 {
+        di as error "ztail() must be between 0 and 1"
+        exit 198
+    }
+    if `k' <= 1 {
+        di as error "k() must be greater than 1 for cross-validation"
+        exit 198
+    }
+	if `adjstd' < 0 {
+        di as error "adjustment must be non-negative"
+        exit 198
+    }
+
+    // Parse input
     local y : word 1 of `anything'
-    // initialize x 
+    
+    // Confirm dependent variable exists
+    capture confirm variable `y'
+    if _rc != 0 {
+        di as error "variable `y' not found"
+        exit 111
+    }
+    
+    // Initialize x 
     local x 
 	local trc 
     local H = `h'
     local h1 = `h1'
 	local nlag = `h'
-	if `ztail' <= 0 | `ztail' >= 1 {
-    di as error "ztail must be between 0 and 1"
-    exit 198
-	}
-
+	
     // Remove the dependent variable from the variable list
     local mesh: subinstr local anything "`y'" "", word
 	local ivdum = strpos("`mesh'", "(") 
@@ -35,6 +70,15 @@ program slp_irf, eclass
 
     local varlist `contr' `x' `y'
     
+    // Confirm all variables exist
+    foreach var of local varlist {
+        capture confirm variable `var'
+        if _rc != 0 {
+            di as error "variable `var' not found"
+            exit 111
+        }
+    }
+    
     if (`h1'> 0) {
     	local contr `contr' `y'
     }
@@ -44,9 +88,6 @@ program slp_irf, eclass
 		
 	}
 	
-    
-    
-    
     local r = `r'
     local lambda `lambda'
     local K = `k'
@@ -63,11 +104,8 @@ program slp_irf, eclass
 	}
     }
     	
-    
     scalar delt = 0 
 	
-	
-    
     if (`ivdum' > 0) {
 
  // isolate parentheses expression 
@@ -92,8 +130,12 @@ program slp_irf, eclass
     	local EV  = 1 
     }
 		 
-    
-    * Additional initializations
+    // Check for sufficient observations
+    quietly count if !missing(`y')
+    if r(N) <= `h' {
+        di as error "insufficient observations: need at least `=`h'+1' non-missing observations"
+        exit 2001
+    }
     
      //we need to drop all places we have missing values since we're doing matrix ops
     // so first we will create the y matrix to maximize data at longer horizons 
@@ -124,26 +166,24 @@ program slp_irf, eclass
     	quietly drop if missing(`var')
     }
 	
-	 
-    
     mkmat temp_*, matrix(yy)
 	drop temp_*
 
-    * Create the range of values for h
+    // Create the range of values for h
     tempvar h_range
     quietly generate `h_range' = `h1' + _n - 1 if _n <= `H'+1-`h1'
 
-    * Generate basis functions
+    // Generate basis functions
     quietly bspline, xvar(`h_range') power(`bdeg') knots(`=`h1''(1)`=`H'') gen(bs)
     
     mkmat bs*, matrix(bs)
-    
 
-    * Create a matrix from the basis variables
+    // Create a matrix from the basis variables
     matrix basis = bs[1..`=`H'+1-`h1'',1'...]
 	    
     drop bs*
-    * Create covariates matrix if w is specified
+    
+    // Create covariates matrix if w is specified
     matrix w = J(_N, 1, 1) 
     
         if ("`w'" != "") {
@@ -155,7 +195,7 @@ program slp_irf, eclass
         matrix w = J(_N, 1, 1)
     }
     
-    * 1 shock std dev
+    // 1 shock std dev
     if (("`w'" != "") & (`ivdum'==0)) {
         quietly reg `x' `w'
         scalar delt = e(rmse)
@@ -170,13 +210,10 @@ program slp_irf, eclass
     	local delta = 1
     }
     else {
-    	local delta = `=delt'*`se'
+    	local delta = `=delt'*`irfscale'
     }
 	
-	 
-    	
-
-	* Additional initializations
+    // Additional initializations
     local T = _N
     local HR = `H' + 1 - `h1'
     local TS = `T' * `HR'
@@ -193,7 +230,6 @@ program slp_irf, eclass
 		matrix xz = (1,1)
 	}
 	
-    
     mata: yy = st_matrix("yy")
     mata: x = st_matrix("x")
     mata: w = st_matrix("w")
@@ -208,10 +244,10 @@ program slp_irf, eclass
 	mata: sel = st_matrix("sel")
 	mata: ivtwirl(`ivdum',`back',xz,basis,X,sel,`TS',`XS',`HR',`EV')
 	mata: ZX = st_matrix("ZX")
-	di "DATA PROCESSING COMPLETE"
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',`nlag',`ztail',lambda_vec, "`vmat'","`mult'")
+	di "Data processing complete"
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',`nlag',`ztail',lambda_vec, "`vmat'","`mult'", `adjstd')
     
-        * Prepare data for graphing
+        // Prepare data for graphing
     svmat double results, names(result)
     svmat double irc, names(irc)
     gen time = _n - 1
@@ -228,15 +264,12 @@ program slp_irf, eclass
 			tempvar sc_time 
 			quietly gen `sc_time' = time - `shift'
 		tw (rarea irc1 irc2 `sc_time', fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
-         (scatter result1 `sc_time', c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if (`shift'<=time)&(time<=`=`i'*(`H'+1)-1'), title("IRF of `y' for shock to `xx'") name("`xx'") xtitle(horizon)
+         (scatter result1 `sc_time', c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 255))) if (`shift'<=time)&(time<=`=`i'*(`H'+1)-1'), title("IRF of `xx' for shock to `xx'") name("`xx'") xtitle(horizon)
 		}
 	}
     }
         
-
 end
-
-
 
 mata: 
 
@@ -306,8 +339,6 @@ void function twirl( real scalar back,
 	st_matrix("P",P)
 } 
 
-
-
 void function cvtwirl( real scalar T,
                      real matrix Y,
 		     real matrix X,
@@ -327,7 +358,8 @@ void function cvtwirl( real scalar T,
 			 real scalar ztail,
 		     string vector lambda_vec,
 		     string vmat,
-		     string mult)
+		     string mult,
+			 real scalar adjstd)
 {
 	min_rss = .
 	min_lambda = .
@@ -348,7 +380,6 @@ void function cvtwirl( real scalar T,
 			rss_l[i,1] = mean((Y_out - X_out * beta):^2)
 		}
 		avg_rss = mean(rss_l)
-		//avg_rss
 		if ((min_rss == .) | (avg_rss < min_rss)) {
 			min_rss = avg_rss
 			min_lambda = lambda_l
@@ -360,14 +391,22 @@ void function cvtwirl( real scalar T,
         results = J(linked, 1, 0)
         theta = J(cols(X), 1, 0)
         lambda_opt = min_lambda 
-
+	
 	XX = quadcross(X, X)
 	XY = quadcross(X, Y)
 	
+	
+	
+		
         A = XX + lambda_opt * rows(Y) * P
 		bread = luinv(A)
-        b = XY
-        theta = bread * b
+        theta = bread * XY
+		thetav = theta 
+		if (adjstd != 1){
+			AA = XX + adjstd * lambda_opt * rows(Y) * P
+			breadv = luinv(AA)
+			thetav = breadv * XY
+		}
 	beta = theta[1..XS, 1]
 	if (mult != ""){
 		mu = basis * beta[1..XS/EV,1] 
@@ -381,7 +420,7 @@ void function cvtwirl( real scalar T,
 	}
 	
 
-        u = Y - ZX * theta
+        u = Y - ZX * thetav
         S = X :* (u * J(1, cols(X), 1))
 
 	lagseq = 0::nlag
@@ -466,7 +505,6 @@ void function ivtwirl( real scalar ivdum,
 	}
 	st_matrix("ZX",ZX)
 }
-
 
 real scalar function idb(idx,blk){
 	return ((idx-1)*blk+1)
