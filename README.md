@@ -121,8 +121,9 @@ Because this is the first time I have tried to create a Stata package (or worked
 There are two dependencies that must be installed first 
 
  ```
-ssc install moremata bspline
-net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
+ssc install moremata
+ssc install bspline
+net install slp_irf, from(https://raw.githubusercontent.com/paulbousquet/SmoothLP/main/src)
 ```
 
 ***
