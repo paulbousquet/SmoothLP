@@ -49,15 +49,18 @@ local ztail = .1
 * Vector of possible penalization parameters 
 local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009 .01
 
-* set vmat option to nw for Newey-West, Huber-White by default 
+* set vmat option to nw for Newey-West, Huber-White by default
 
-slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") ztail(`ztail')
+* the example uses a "naive" starndard error. Inference not well defined in light of cross-validation. 
+* BB19 give reccomendation of calculating standard errors with a smaller (10%) penalty, which is the default
+
+slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") adjstd(1) ztail(`ztail')
 
 ```
 If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. 
 ```
 tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid)) ///
-         (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 244))) if time<=`H'
+         (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 255))) if time<=`H'
 ```
 
 In most Macro settings, this IRF framework gives rise to an identification issue because of the endogeneity of $x$. One approach, referred to "identification through controls" in BB19, is to assume macro variables of interest evolve according to a VAR system, essentially allowing one to back out an exogenous shock to $x$ by conditioning on covariates $\bf{W}_t$. As they point out, with respect to the application with output and interest rates, this can be thought of as identifying shocks in a Taylor Rule. However, this identification through controls approach has grown less popular over time because of the reliance on stuctural assumptions -- LPs are attactive in the first place in part because the minimal structure imposed has been shown to yield much less biased results in finite samples compared to VARs. However, even if we don't feel comfortable ascribing a causal interpretation to what's being estimated, uncovering correlations is still important and it's quite easy to change the conditioning set to get an idea of how sensitive the results are. 
@@ -76,7 +79,7 @@ Program can handle multiple instruments using standard Stata norms (B-splines ar
 ## Syntax 
 
 ```
-syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) se(integer 1) ztail(real .05) MULT CUM NODRAW NOADJ]
+syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
 ```
 * You can call `slp_irf` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
@@ -87,7 +90,8 @@ syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(in
 * Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `slp_irf`
 * vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust.
   * You can specify Newey-West with `p` lags using `nwlag(p)`. Default is `H` as in the original R code.  
-* se allows you to scale the size of the shock (by default, it's a 1 std shock).
+* irfscale allows you to scale the size of the shock (by default, it's a 1 std shock).
+* adjstd calculates standard errors using a smaller penalty. Default is .1 (10% smaller) in line with BB19's reccomendations. This is because inference is not well-defined because of the cross-validation. 
 * ztail allows for the confidence bands to be adjusted. Default is .05, which corresponds to 90% confidence intervals. 
 * Alternativly, you can add the `noadj` option for a pure plot of the coefficients
 * Add `cum` to instead do cumulative IRFs
