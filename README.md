@@ -7,18 +7,26 @@ Some work-in-progress `.ado` files for Smooth Local Projection estimation outlin
 * See also an [R package](https://github.com/jackson-mejia/splp/tree/main) for Smooth LPs in a panel data setting 
 
 <p align="center">
+  <a href="#installation">Installation</a> |
   <a href="#replication-of-example">Replication</a> |
   <a href="#iv-extension">IV</a> |
   <a href="#syntax">Syntax</a> |
-  <a href="#future-development">Development</a> |
-  <a href="#installation">Installation</a>
+  <a href="#future-development">Development</a> 
 </p>
 
 
 
 ***
 
-Smooth Local Projections extend penalized regression methods to local projections (LP). The estimator of BB19 comes from minimizing a ridge-type loss function with a specific penalty matrix motivated by the use of using B-spline basis functions to approximate the coefficient(s) of interest. This approach was conceived to address issues related to a common use of local projections to generate impulse response functions (IRFs). More specifically, the relevant deliverable is a plot of the coeficients on $x_t$ from regressions of $y_{t+h}$ on $(x_t,\bf{W}_t)$ for $h=h_1,\dots,H$, representing the response path of an outcome varible of interest $y$ given a change in $x$ at $t$. When estimated via a default LP structure, these coefficients can have a lot of variability from one horizon to the next (creating "jagged" plots), as well as large standard errors. BB19 addresses both, most obviously because nonzero values of the ridge parameter $\lambda$ produce more efficient estimates, but the estimated IRFs shrink to a polynomial as $\lambda$ grows because higher order derivitives with this penalty matrix in conjunction with the use of B-splines converge to 0, making response paths even "smoother" than a more straightforward penalized approach. Intuitively, smoothness arises across the entire plot because estimating the IRF is treated as a singular optimization problem and the basis functions are constructed to match the number of periods in the IRF (making adjacent coefficients more similar). 
+Smooth Local Projections extend penalized regression methods to local projections (LP). The estimator of BB19 comes from minimizing a ridge-type loss function with a specific penalty matrix motivated by the use of using B-spline basis functions to approximate the coefficient(s) of interest. This approach was conceived to address issues related to a common use of local projections to generate impulse response functions (IRFs). Specifically, the relevant deliverable is a plot of the coeficients on $x_t$ from regressions of $y_{t+h}$ on $(x_t,\bf{W}_t)$ for $h=h_1,\dots,H$, representing the response path of an outcome varible of interest $y$ given a change in $x$ at $t$. When estimated via a default LP structure, these coefficients can have a lot of variability from one horizon to the next (creating "jagged" plots), as well as large standard errors. BB19 addresses both, most obviously because nonzero values of the ridge parameter $\lambda$ produce more efficient estimates, but the estimated IRFs shrink to a polynomial as $\lambda$ grows because higher order derivitives with this penalty matrix in conjunction with the use of B-splines converge to 0, making response paths even "smoother" than a more straightforward penalized approach. Intuitively, smoothness arises across the entire plot because estimating the IRF is treated as a singular optimization problem and the basis functions are constructed to match the number of periods in the IRF (making adjacent coefficients more similar).
+ ## Installation
+There are two dependencies that must be installed first 
+
+ ```
+ssc install moremata bspline
+net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
+```
+I am holding off on making this available on ssc while I get more feedback. Please [email me](mailto:pbousquet@virginia.edu) if you have any comments or feature requests (also see the <a href="#future-development"> future development</a>  section).
 
 ## Replication of Example
 
@@ -63,8 +71,10 @@ tw (rarea irc1 irc2 time, fcolor(purple%15) lcolor(gs13) lw(none) lpattern(solid
          (scatter result1 time, c(l ) clp(l ) ms(i ) clc(black) mc(black) clw(medthick) legend(off) graphregion(fcolor(255 255 255))) if time<=`H'
 ```
 
-In most Macro settings, this IRF framework gives rise to an identification issue because of the endogeneity of $x$. One approach, referred to "identification through controls" in BB19, is to assume macro variables of interest evolve according to a VAR system, essentially allowing one to back out an exogenous shock to $x$ by conditioning on covariates $\bf{W}_t$. As they point out, with respect to the application with output and interest rates, this can be thought of as identifying shocks in a Taylor Rule. However, this identification through controls approach has grown less popular over time because of the reliance on stuctural assumptions -- LPs are attactive in the first place in part because the minimal structure imposed has been shown to yield much less biased results in finite samples compared to VARs. However, even if we don't feel comfortable ascribing a causal interpretation to what's being estimated, uncovering correlations is still important and it's quite easy to change the conditioning set to get an idea of how sensitive the results are. 
+In many settings, this specification can be problematic because of the endogeneity of $x$. One approach, referred to "identification through controls" in BB19, is to assume macro variables of interest evolve according to a VAR system, essentially allowing one to back out an exogenous shock to $x$ by conditioning on covariates $\bf{W}_t$. As they point out, with respect to the application with output and interest rates, this can be thought of as identifying shocks in a Taylor Rule. However, this identification through controls approach has grown less popular over time because of the reliance on stuctural assumptions -- LPs are attactive to begin with in part because the minimal structure imposed has been shown to yield much less biased results in finite samples compared to VARs.[^1][^2] But even if we don't feel comfortable ascribing a causal interpretation to what's being estimated, uncovering correlations is still important and it's quite easy to change the conditioning set to get an idea of how sensitive the results are. 
 
+[^1]: For a great practitioner's guide for deciding between LP vs. VAR, see this recent paper from [Olea, Qian,Plagborg-Møller and Wolf](https://arxiv.org/abs/2503.17144). They give LPs the edge in general, in large part because any efficiency gains are mechanically a result of insufficient coverage.  
+[^2]: [Kolesár and Plagborg-Møller (2025)](https://www.mikkelpm.com/files/nonlinear_causal.pdf) show identification through controls is sensitive to model mispecification/nonlinearity. 
 ## IV Extension 
 
 Section 4 of BB19 gives an illustration of the estimator in concert with a LP-IV framework. While no replication files exists for this exercise, conceptually the implementation is straightforward: 2SLS but the first stage contains no regularization procedure. In other words, our `x` becomes the fitted values from the first stage regression. 
@@ -107,23 +117,13 @@ To recap and list all of the things that are stored following the command
 
 ## Future Development 
 
-Please [email me](mailto:pbousquet@virginia.edu) if you have any comments or feature requests. I will be updating it as I work through a couple projects. Some things I have planned 
+ I will be updating it as I work through a couple projects. Some things I have planned 
 
 * more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
 * error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
 
 An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude due to well-known precision issues associated with Stata/Mata. This can happen in general (e.g., 7th digit of 1/6) but is particularly an issue when inverting matricies.  
- 
- ## Installation
 
-Because this is the first time I have tried to create a Stata package (or worked with .ado files in general), I am going to wait to make it available on ssc while I keep working on it and get feedback. 
-
-There are two dependencies that must be installed first 
-
- ```
-ssc install moremata bspline
-net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
-```
 
 ***
 Thank you to my RA, Claud, for all their help!
