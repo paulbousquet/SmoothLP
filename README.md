@@ -23,8 +23,8 @@ Smooth Local Projections extend penalized regression methods to local projection
 There are two dependencies that must be installed first 
 
  ```
-ssc install moremata bspline
-net from https://raw.githubusercontent.com/paulbousquet/SmoothLP/master 
+ssc install moremata; ssc install bspline
+copy "https://raw.githubusercontent.com/paulbousquet/SmoothLP/main/slp_irf.ado" slp_irf.ado
 ```
 I am holding off on making this available on ssc while I get more feedback. Please [email me](mailto:pbousquet@virginia.edu) if you have any comments or feature requests (also see the <a href="#future-development"> future development</a>  section).
 
