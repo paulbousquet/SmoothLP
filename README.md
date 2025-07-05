@@ -89,7 +89,7 @@ Program can handle multiple instruments using standard Stata norms (B-splines ar
 ## Syntax 
 
 ```
-syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
+syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
 ```
 * You can call `slp_irf` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
