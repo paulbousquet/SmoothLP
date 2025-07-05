@@ -1,6 +1,6 @@
 program slp_irf, eclass 
     version 15.0
-    syntax anything(equalok) [if] [in], H(integer) Lambda(numlist) K(integer) [H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
+    syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
 
     // Check if data is time series
     capture tsset
@@ -94,6 +94,10 @@ program slp_irf, eclass
     local Lag = `lag'
     local w `contr'
     local vmat = "`vmat'"
+
+    if "`lambda'" == "" {
+		local lambda = 0
+	}
     
     if (`Lag' > 0) {
     	foreach var of local varlist {
@@ -202,6 +206,7 @@ program slp_irf, eclass
     }
     else {
         if ("`w'" == "") {
+		qui sum `x'
 		scalar delt = r(sd)
 	}
     }
@@ -390,7 +395,7 @@ void function cvtwirl( real scalar T,
 	linked = (H + 1)*EV
         results = J(linked, 1, 0)
         theta = J(cols(X), 1, 0)
-        lambda_opt = min_lambda 
+        lambda_opt = min_lambda + 10^(-10)
 	
 	XX = quadcross(X, X)
 	XY = quadcross(X, Y)
