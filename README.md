@@ -95,7 +95,11 @@ Inference is not well-defined in light of cross-validation. SmoothLP by construc
 
 To decide on default behavior, I ran simulations using the [GitHub repo](https://github.com/ckwolf92/lp_var_nberma/tree/main) of MOQPMW to see what choices could improve the coverage properties. To those ends, here are the default behaviors (and reccomendations)
   * The default is Huber-White standard errors. This should be paired with including a healthy number of lags as controls. 
-  * The default undersmoothing is 1%; see below for a graph of how different undersmoothing choices affect coverage (what's plotted is the fraction of DGPs for with the SmoothLP estimator has proper coverage for different undersmoothing choices).  
+  * The default undersmoothing is 1%; see below for a graph of how different undersmoothing choices affect coverage (what's plotted is the fraction of DGPs for with the SmoothLP estimator has proper coverage for different undersmoothing choices).
+    
+<p align="center">
+  <img width="450" height="300" alt="image" src="https://github.com/user-attachments/assets/d8af5156-37a9-44ab-bf21-67df561a246f" />
+</p>
 
 These findings are consistent with broader results in the literature. Newey-West standard errors are the default in time series, but [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and have autocorrelation robustness properties. My simulations showed severe udnercoverage for NW relative to HW (for the same undersmoothing choices). 
 
@@ -114,7 +118,7 @@ syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) 
 * vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, see the previous section for more discussion. 
   * You can specify Newey-West with `p` lags using `nwlag(p)`. Default is `H` as in the original R code.  
 * irfscale allows you to scale the size of the shock (by default, it's a 1 std shock).
-* adjstd calculates standard errors using a smaller penalty. Default is .1 (10% smaller) in line with BB19's reccomendations. This is because inference is not well-defined because of the cross-validation. 
+* usmooth scales the select penalization paramater. Default is .01 (1% smaller), see discussion in previous section. 
 * ztail allows for the confidence bands to be adjusted. Default is .05, which corresponds to 90% confidence intervals. 
 * Alternativly, you can add the `noadj` option for a pure plot of the coefficients
 * Add `cum` to instead do cumulative IRFs
