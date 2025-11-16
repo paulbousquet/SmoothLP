@@ -10,6 +10,7 @@ Some work-in-progress `.ado` files for Smooth Local Projection estimation outlin
   <a href="#installation">Installation</a> |
   <a href="#replication-of-example">Replication</a> |
   <a href="#iv-extension">IV</a> |
+  <a href="#inference">Inference </a> |
   <a href="#syntax">Syntax</a> |
   <a href="#future-development">Development</a> 
 </p>
@@ -53,16 +54,18 @@ local h1 = 1
 local H = 20
 * In the original R code, 80% bands are used. Default is 90% 
 local ztail = .1
-* the example uses a "naive" starndard error. Inference not well defined in light of cross-validation. 
-* BB19 give (heuristic) reccomendation of calculating standard errors with a smaller (10%) penalty, which is the default
+* Inference not well defined in light of cross-validation.
+* The example does not account for this and uses a "naive" (unadjusted) starndard error.  
+* The default behavior undersmoothes, discussed more in "Inference" section of README
 local naive = 1 
 
 * Vector of possible penalization parameters 
 local lambda 0.00001 0.0001 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 .009 .01
 
 * set vmat option to nw for Newey-West, Huber-White by default
+* discussed in "Inference" section of README
 
-slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") adjstd(`naive') ztail(`ztail')
+slp_irf `y' `x' `w', h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw") usmooth(`naive') ztail(`ztail')
 
 ```
 If you want to customize the graphs, the IRF values (`results1`) and bands (`irc1`, `irc2`) are stored as variables (with `time` as the x axis). For instance, this is what's run as a default, but you can run it on its own after executing `slp_irf`, as shown below. 
@@ -86,10 +89,20 @@ slp_irf `y' `w' (ir=rr), h(`H') h1(`h1') lambda(`lambda') k(5) lag(4) vmat("nw")
 ```
 Program can handle multiple instruments using standard Stata norms (B-splines are also used for these coefficients and the penalty matrix is appended accordingly). A graph will only be produced for the first endogenous variable listed unless the `mult` option is specified.  
 
+## Inference 
+
+Inference is not well-defined in light of cross-validation. SmoothLP by construction will give more narrow confidence intervals than LP, but as shown in recent work by [Montiel Olea, Qian,Plagborg-Møller, and Wolf](https://arxiv.org/abs/2503.17144) this is necessarily a consequence of inducing bias. More specifically, they show SmoothLP severely undercovers when following the heuristic reccomendations of BB19 (compute the variance-covariance matrix Newey-West w/ a penalization parameter that is 10% of what was selected during cross-validation). So an open question is how should standard errors be computed. 
+
+To decide on default behavior, I ran simulations using the [GitHub repo](https://github.com/ckwolf92/lp_var_nberma/tree/main) of MOQPMW to see what choices could improve the coverage properties. To those ends, here are the default behaviors (and reccomendations)
+  * The default is Huber-White standard errors. This should be paired with including a healthy number of lags as controls. 
+  * The default undersmoothing is 1%; see below for a graph of how different undersmoothing choices affect coverage (what's plotted is the fraction of DGPs for with the SmoothLP estimator has proper coverage for different undersmoothing choices).  
+
+These findings are consistent with broader results in the literature. Newey-West standard errors are the default in time series, but [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and have autocorrelation robustness properties. My simulations showed severe udnercoverage for NW relative to HW (for the same undersmoothing choices). 
+
 ## Syntax 
 
 ```
-syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
+syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) usmooth(real .01) ztail(real .05) MULT CUM NODRAW NOADJ]
 ```
 * You can call `slp_irf` just like `reg`. To plot the IRF of `y` to `x`, list `y x` in that order. Every variable listed after `x` will be included in the list of controls. See section above for IV option
 * H is the horizon length
@@ -98,7 +111,7 @@ syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) 
 * H1 is the period the IRF starts
 * r sets order of the limit polynomial. More specifically, the $r$-th derivitive of the IRF converges to 0 as $\lambda$ grows 
 * Lag allows you to include lags of control variables in the conditioning set. For this, a `tsset` command must be run before `slp_irf`
-* vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, but note that [Herbst and Johannsen (2024)](http://www.sciencedirect.com/science/article/pii/S0304407624000010) finds the NW variance matrix will often be biased while [Plagborg-Møller and Montiel Olea (2021)](https://joseluismontielolea.com/lp_inference_ecta.pdf) show that if a sufficient number of lags are included as controls, the usual HW errors are unbiased and autocorrelation robust.
+* vmat takes option "nw" if you would rather use Newey-West standard errors over Huber-White, see the previous section for more discussion. 
   * You can specify Newey-West with `p` lags using `nwlag(p)`. Default is `H` as in the original R code.  
 * irfscale allows you to scale the size of the shock (by default, it's a 1 std shock).
 * adjstd calculates standard errors using a smaller penalty. Default is .1 (10% smaller) in line with BB19's reccomendations. This is because inference is not well-defined because of the cross-validation. 
