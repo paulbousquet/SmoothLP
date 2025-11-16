@@ -1,6 +1,6 @@
 program slp_irf, eclass 
     version 15.0
-    syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) adjstd(real .1) ztail(real .05) MULT CUM NODRAW NOADJ]
+    syntax anything(equalok) [if] [in], [Lambda(numlist) H(integer 20) K(integer 5) H1(integer 0) R(integer 2) Lag(integer 0) NWLag(integer 0) bdeg(integer 3) vmat(string) irfscale(integer 1) usmooth(real .01) ztail(real .05) MULT CUM NODRAW NOADJ]
 
     // Check if data is time series
     capture tsset
@@ -30,7 +30,7 @@ program slp_irf, eclass
         di as error "k() must be greater than 1 for cross-validation"
         exit 198
     }
-	if `adjstd' < 0 {
+	if `usmooth' < 0 {
         di as error "adjustment must be non-negative"
         exit 198
     }
@@ -250,7 +250,7 @@ program slp_irf, eclass
 	mata: ivtwirl(`ivdum',`back',xz,basis,X,sel,`TS',`XS',`HR',`EV')
 	mata: ZX = st_matrix("ZX")
 	di "Data processing complete"
-    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',`nlag',`ztail',lambda_vec, "`vmat'","`mult'", `adjstd')
+    mata: cvtwirl(`T',Y,X,P,basis,IDX,ZX,`h1',`H',`L',`K',`=TS',`XS',`delta',`EV',`nlag',`ztail',lambda_vec, "`vmat'","`mult'", `usmooth')
     
         // Prepare data for graphing
     svmat double results, names(result)
@@ -364,7 +364,7 @@ void function cvtwirl( real scalar T,
 		     string vector lambda_vec,
 		     string vmat,
 		     string mult,
-			 real scalar adjstd)
+			 real scalar usmooth)
 {
 	min_rss = .
 	min_lambda = .
@@ -395,7 +395,7 @@ void function cvtwirl( real scalar T,
 	linked = (H + 1)*EV
         results = J(linked, 1, 0)
         theta = J(cols(X), 1, 0)
-        lambda_opt = min_lambda + 10^(-10)
+        lambda_opt = usmooth* min_lambda + 10^(-10)
 	
 	XX = quadcross(X, X)
 	XY = quadcross(X, Y)
@@ -407,11 +407,6 @@ void function cvtwirl( real scalar T,
 		bread = luinv(A)
         theta = bread * XY
 		thetav = theta 
-		if (adjstd != 1){
-			AA = XX + adjstd * lambda_opt * rows(Y) * P
-			breadv = luinv(AA)
-			thetav = breadv * XY
-		}
 	beta = theta[1..XS, 1]
 	if (mult != ""){
 		mu = basis * beta[1..XS/EV,1] 
