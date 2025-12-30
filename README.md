@@ -94,7 +94,7 @@ Program can handle multiple instruments using standard Stata norms (B-splines ar
 Inference is not well-defined in light of cross-validation. SmoothLP by construction will give more narrow confidence intervals than LP, but as shown in recent work by [Montiel Olea, Qian,Plagborg-Møller, and Wolf](https://arxiv.org/abs/2503.17144) this is necessarily a consequence of inducing bias. More specifically, they show SmoothLP severely undercovers when following the heuristic reccomendations of BB19 (compute the variance-covariance matrix Newey-West w/ a penalization parameter that is 10% of what was selected during cross-validation). So an open question is how should standard errors be computed. 
 
 To decide on default behavior, I ran simulations using the [GitHub repo](https://github.com/ckwolf92/lp_var_nberma/tree/main) of MOQPMW to see what choices could improve the coverage properties. To those ends, here are the default behaviors (and reccomendations)
-  * The default is Huber-White standard errors. This should be paired with including a healthy number of lags as controls. 
+  * The default is Huber-White standard errors. This should be paired with including a healthy number of lags (of the dependent and independent variables) as controls. 
   * The default undersmoothing is 1%; see below for a graph of how different undersmoothing choices affect coverage (what's plotted is the fraction of DGPs for with the SmoothLP estimator has proper coverage for different undersmoothing choices).
     
 <p align="center">
