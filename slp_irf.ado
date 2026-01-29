@@ -145,7 +145,6 @@ program slp_irf, eclass
     // so first we will create the y matrix to maximize data at longer horizons 
     
     quietly drop if _n <= `Lag'
-    quietly drop if missing(`y')
     local T = _N
     
     if ("`cum'" != "") {
