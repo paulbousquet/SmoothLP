@@ -139,7 +139,7 @@ To recap and list all of the things that are stored following the command
 * more customizability: confidence bands, graphs, ability to have different lag lengths across controls  
 * error messages that are common practice in stata packages (e.g., if Lag() is specified but data not loaded with time series format) 
 
-An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude due to well-known precision issues associated with Stata/Mata. This can happen in general (e.g., 7th digit of 1/6) but is particularly an issue when inverting matricies.  
+An important disclaimer for these programs is that it may be advisable to transform your variables if they are extremely small in magnitude
 
 
 ***
